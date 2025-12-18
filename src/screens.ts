@@ -79,3 +79,20 @@ export function renderContact() {
     ]),
   }
 }
+
+export function renderConfirm(text: string) {
+  return {
+    text,
+    keyboard: Markup.inlineKeyboard([
+      [Markup.button.callback('✅ Отправить заявку', 'CONFIRM_SEND')],
+      [Markup.button.callback('⬅️ Назад', 'BACK')],
+    ]),
+  }
+}
+
+export function renderDone() {
+  return {
+    text: 'Заявка отправлена! 🎉\n\nМенеджер скоро свяжется с вами 😊',
+    keyboard: Markup.inlineKeyboard([[Markup.button.callback('🌸 Новый заказ', 'E1')]]),
+  }
+}
