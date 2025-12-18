@@ -303,27 +303,34 @@ async function start() {
 
   /* ================= TYPE ================= */
   bot.action('E1', async (ctx) => {
+    await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'E1_CHOOSE_TYPE', 'START')
+
     const s = renderE1()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
   /* ================= READY ================= */
   bot.action('E2_READY', async (ctx) => {
+    await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'E2_READY', 'E1_CHOOSE_TYPE')
+
     const s = renderReady()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
   /* ================= CUSTOM → BUDGET ================= */
   bot.action('E2_CUSTOM', async (ctx) => {
+    await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'E2_BUDGET', 'E1_CHOOSE_TYPE')
+
     const s = renderBudget()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
   /* ================= BACK ================= */
   bot.action('BACK', async (ctx) => {
+    await ctx.answerCbQuery()
     const prev = await goBack(ctx.from!.id)
     if (!prev) return
 
@@ -378,13 +385,11 @@ async function start() {
   })
 
   /* ================= STYLE ================= */
-  const STYLE_MAP = {
-    STYLE_ANY: 'Без разницы',
-    STYLE_SOFT: 'Нежный / светлый',
-    STYLE_BRIGHT: 'Яркий',
-  }
-
-  Object.keys(STYLE_MAP).forEach((action) => {
+  Object.keys({
+    STYLE_ANY: true,
+    STYLE_SOFT: true,
+    STYLE_BRIGHT: true,
+  }).forEach((action) => {
     bot.action(action, async (ctx) => {
       await ctx.answerCbQuery()
       await setState(ctx.from!.id, 'E3_DELIVERY', 'E2_STYLE')
@@ -404,6 +409,7 @@ async function start() {
   bot.action('DELIVERY_COURIER', async (ctx) => {
     await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'WAIT_ADDRESS', 'E3_DELIVERY')
+
     const s = renderAddress()
     await ctx.editMessageText(s.text, s.keyboard)
   })
@@ -411,18 +417,40 @@ async function start() {
   bot.action('DELIVERY_PICKUP', async (ctx) => {
     await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+
     const s = renderContact()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
+  /* ================= CONTACT BUTTONS ================= */
+  bot.action('CONTACT_REQUEST', async (ctx) => {
+    await ctx.answerCbQuery()
+    await setState(ctx.from!.id, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+
+    await ctx.reply('Нажмите кнопку ниже, чтобы отправить номер 📱', {
+      reply_markup: {
+        keyboard: [[{ text: '📱 Отправить номер', request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    })
+  })
+
+  bot.action('CONTACT_MANUAL', async (ctx) => {
+    await ctx.answerCbQuery()
+    await setState(ctx.from!.id, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+    await ctx.editMessageText('Введите номер телефона 📞')
+  })
+
   /* ================= CONTACT ================= */
   bot.on('contact', async (ctx) => {
+    const user = await getOrCreateUser(ctx.from.id)
+    if (user.state !== 'WAIT_PHONE_TEXT') return
+
     const phone = ctx.message.contact.phone_number
-    await setState(ctx.from!.id, 'CONFIRM')
+    await setState(ctx.from.id, 'CONFIRM')
 
-    const text = 'Проверьте заказ 👇\n\n' + `Телефон: ${phone}`
-
-    const s = renderConfirm(text)
+    const s = renderConfirm(`Телефон: ${phone}`)
     await ctx.reply(s.text, s.keyboard)
   })
 
@@ -460,6 +488,7 @@ async function start() {
   bot.action('CONFIRM_SEND', async (ctx) => {
     await ctx.answerCbQuery()
     await setState(ctx.from!.id, 'DONE')
+
     const s = renderDone()
     await ctx.editMessageText(s.text, s.keyboard)
   })
