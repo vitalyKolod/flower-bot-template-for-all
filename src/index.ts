@@ -285,6 +285,7 @@ import {
   renderConfirm,
   renderDone,
 } from './screens'
+import { getActiveOrder, Order } from './models/Order'
 
 const bot = new Telegraf(process.env.BOT_TOKEN!)
 
@@ -321,47 +322,50 @@ async function start() {
 
   /* ================= CUSTOM → BUDGET ================= */
   bot.action('E2_CUSTOM', async (ctx) => {
-    await ctx.answerCbQuery()
-    await setState(ctx.from!.id, 'E2_BUDGET', 'E1_CHOOSE_TYPE')
+    const tgId = ctx.from!.id
+
+    await setState(tgId, 'E2_BUDGET', 'E1_CHOOSE_TYPE')
+
+    // 🔥 создаём заказ ТОЛЬКО если нет активного
+    const existing = await getActiveOrder(tgId)
+    if (!existing) {
+      await Order.create({
+        userTgId: tgId,
+        type: 'CUSTOM',
+        deliveryType: 'COURIER', // дефолт, потом перезапишем
+        phone: 'temp',
+      })
+    }
 
     const s = renderBudget()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
   /* ================= BACK ================= */
+  async function safeEdit(ctx: any, screen: { text: string; keyboard: any }) {
+    try {
+      await ctx.editMessageText(screen.text, screen.keyboard)
+    } catch (e: any) {
+      if (!e.message?.includes('message is not modified')) {
+        throw e
+      }
+    }
+  }
+
   bot.action('BACK', async (ctx) => {
     await ctx.answerCbQuery()
     const prev = await goBack(ctx.from!.id)
     if (!prev) return
 
-    if (prev === 'E1_CHOOSE_TYPE') {
-      const s = renderE1()
-      return ctx.editMessageText(s.text, s.keyboard)
-    }
-
-    if (prev === 'E2_BUDGET') {
-      const s = renderBudget()
-      return ctx.editMessageText(s.text, s.keyboard)
-    }
-
-    if (prev === 'E2_STYLE') {
-      const s = renderStyle()
-      return ctx.editMessageText(s.text, s.keyboard)
-    }
-
-    if (prev === 'E3_DELIVERY') {
-      const s = renderDelivery()
-      return ctx.editMessageText(s.text, s.keyboard)
-    }
-
-    if (prev === 'CONFIRM') {
-      const s = renderContact()
-      return ctx.editMessageText(s.text, s.keyboard)
-    }
+    if (prev === 'E1_CHOOSE_TYPE') return safeEdit(ctx, renderE1())
+    if (prev === 'E2_BUDGET') return safeEdit(ctx, renderBudget())
+    if (prev === 'E2_STYLE') return safeEdit(ctx, renderStyle())
+    if (prev === 'E3_DELIVERY') return safeEdit(ctx, renderDelivery())
+    if (prev === 'CONFIRM') return safeEdit(ctx, renderContact())
   })
 
   /* ================= BUDGET ================= */
-  const BUDGET_MAP = {
+  const BUDGET_MAP: Record<string, string> = {
     BUDGET_3000: 'до 3000',
     BUDGET_3000_5000: '3000–5000',
     BUDGET_5000_7000: '5000–7000',
@@ -371,7 +375,16 @@ async function start() {
   Object.keys(BUDGET_MAP).forEach((action) => {
     bot.action(action, async (ctx) => {
       await ctx.answerCbQuery()
-      await setState(ctx.from!.id, 'E2_STYLE', 'E2_BUDGET')
+      const tgId = ctx.from!.id
+
+      const order = await getActiveOrder(tgId)
+      if (order) {
+        order.budget = BUDGET_MAP[action]
+        await order.save()
+      }
+
+      // ⬇️ ИДЁМ ДАЛЬШЕ, А НЕ ВОЗВРАЩАЕМСЯ
+      await setState(tgId, 'E2_STYLE', 'E2_BUDGET')
 
       const s = renderStyle()
       await ctx.editMessageText(s.text, s.keyboard)
@@ -385,14 +398,26 @@ async function start() {
   })
 
   /* ================= STYLE ================= */
-  Object.keys({
-    STYLE_ANY: true,
-    STYLE_SOFT: true,
-    STYLE_BRIGHT: true,
-  }).forEach((action) => {
+
+  const STYLE_MAP: Record<string, string> = {
+    STYLE_ANY: 'Без разницы',
+    STYLE_SOFT: 'Нежный / светлый',
+    STYLE_BRIGHT: 'Яркий',
+  }
+
+  Object.keys(STYLE_MAP).forEach((action) => {
     bot.action(action, async (ctx) => {
       await ctx.answerCbQuery()
-      await setState(ctx.from!.id, 'E3_DELIVERY', 'E2_STYLE')
+      const tgId = ctx.from!.id
+
+      const order = await getActiveOrder(tgId)
+      if (order) {
+        order.style = STYLE_MAP[action]
+        await order.save()
+      }
+
+      // 👇 логика перехода (ВАЖНО)
+      await setState(tgId, 'E3_DELIVERY', 'E2_STYLE')
 
       const s = renderDelivery()
       await ctx.editMessageText(s.text, s.keyboard)
@@ -456,6 +481,7 @@ async function start() {
 
   /* ================= TEXT FSM ================= */
   bot.on('text', async (ctx) => {
+    const tgId = ctx.from.id
     const user = await getOrCreateUser(ctx.from.id)
     const text = ctx.message.text
 
@@ -472,13 +498,33 @@ async function start() {
     }
 
     if (user.state === 'WAIT_STYLE_TEXT') {
-      await setState(ctx.from.id, 'E3_DELIVERY')
+      const tgId = ctx.from.id
+
+      const order = await getActiveOrder(tgId)
+      if (order) {
+        order.style = text
+        await order.save()
+      }
+
+      // ❗ ВАЖНО
+      await setState(tgId, 'E3_DELIVERY', 'WAIT_STYLE_TEXT')
+
       const s = renderDelivery()
       return ctx.reply(s.text, s.keyboard)
     }
 
     if (user.state === 'WAIT_BUDGET_TEXT') {
-      await setState(ctx.from.id, 'E2_STYLE')
+      const tgId = ctx.from.id
+
+      const order = await getActiveOrder(tgId)
+      if (order) {
+        order.budget = text
+        await order.save()
+      }
+
+      // ❗ ВАЖНО
+      await setState(tgId, 'E2_STYLE', 'WAIT_BUDGET_TEXT')
+
       const s = renderStyle()
       return ctx.reply(s.text, s.keyboard)
     }
