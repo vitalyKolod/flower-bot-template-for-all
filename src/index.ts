@@ -433,16 +433,30 @@ async function start() {
   /* ================= DELIVERY ================= */
   bot.action('DELIVERY_COURIER', async (ctx) => {
     await ctx.answerCbQuery()
-    await setState(ctx.from!.id, 'WAIT_ADDRESS', 'E3_DELIVERY')
+    const tgId = ctx.from!.id
 
+    const order = await getActiveOrder(tgId)
+    if (order) {
+      order.deliveryType = 'COURIER'
+      await order.save()
+    }
+
+    await setState(tgId, 'WAIT_ADDRESS', 'E3_DELIVERY')
     const s = renderAddress()
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
   bot.action('DELIVERY_PICKUP', async (ctx) => {
     await ctx.answerCbQuery()
-    await setState(ctx.from!.id, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+    const tgId = ctx.from!.id
 
+    const order = await getActiveOrder(tgId)
+    if (order) {
+      order.deliveryType = 'PICKUP'
+      await order.save()
+    }
+
+    await setState(tgId, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
     const s = renderContact()
     await ctx.editMessageText(s.text, s.keyboard)
   })
@@ -469,13 +483,29 @@ async function start() {
 
   /* ================= CONTACT ================= */
   bot.on('contact', async (ctx) => {
-    const user = await getOrCreateUser(ctx.from.id)
+    const tgId = ctx.from.id
+    const user = await getOrCreateUser(tgId)
     if (user.state !== 'WAIT_PHONE_TEXT') return
 
     const phone = ctx.message.contact.phone_number
-    await setState(ctx.from.id, 'CONFIRM')
+    const order = await getActiveOrder(tgId)
 
-    const s = renderConfirm(`Телефон: ${phone}`)
+    if (order) {
+      order.phone = phone
+      await order.save()
+    }
+
+    await setState(tgId, 'CONFIRM')
+
+    const s = renderConfirm(
+      `Тип: ${order?.type}\n` +
+        `Бюджет: ${order?.budget ?? '—'}\n` +
+        `Стиль: ${order?.style ?? '—'}\n` +
+        `Доставка: ${order?.deliveryType}\n` +
+        `Адрес: ${order?.address ?? '—'}\n` +
+        `Телефон: ${phone}`
+    )
+
     await ctx.reply(s.text, s.keyboard)
   })
 
@@ -486,14 +516,39 @@ async function start() {
     const text = ctx.message.text
 
     if (user.state === 'WAIT_ADDRESS') {
-      await setState(ctx.from.id, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+      const tgId = ctx.from.id
+      const order = await getActiveOrder(tgId)
+
+      if (order) {
+        order.address = text
+        await order.save()
+      }
+
+      await setState(tgId, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
       const s = renderContact()
       return ctx.reply(s.text, s.keyboard)
     }
 
     if (user.state === 'WAIT_PHONE_TEXT') {
-      await setState(ctx.from.id, 'CONFIRM')
-      const s = renderConfirm(`Телефон: ${text}`)
+      const tgId = ctx.from.id
+      const order = await getActiveOrder(tgId)
+
+      if (order) {
+        order.phone = text
+        await order.save()
+      }
+
+      await setState(tgId, 'CONFIRM')
+
+      const s = renderConfirm(
+        `Тип: ${order?.type}\n` +
+          `Бюджет: ${order?.budget ?? '—'}\n` +
+          `Стиль: ${order?.style ?? '—'}\n` +
+          `Доставка: ${order?.deliveryType}\n` +
+          `Адрес: ${order?.address ?? '—'}\n` +
+          `Телефон: ${text}`
+      )
+
       return ctx.reply(s.text, s.keyboard)
     }
 
