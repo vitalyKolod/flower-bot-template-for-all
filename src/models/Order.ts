@@ -1,22 +1,44 @@
-import { Schema, model } from 'mongoose'
+import { Schema, model, Document } from 'mongoose'
 
 export type OrderStatus = 'new' | 'in_work' | 'accepted' | 'rejected' | 'done'
 
-const OrderSchema = new Schema(
+/* ================= TYPE ================= */
+
+export interface OrderDoc extends Document {
+  userTgId: number
+  type: 'READY' | 'CUSTOM'
+
+  // CUSTOM
+  budget?: string | null
+  style?: string | null
+
+  // READY
+  refText?: string | null
+  refPhotos: string[]
+
+  // delivery
+  deliveryType: 'COURIER' | 'PICKUP'
+  address?: string | null
+  phone: string
+
+  status: OrderStatus
+}
+
+/* ================= SCHEMA ================= */
+
+const OrderSchema = new Schema<OrderDoc>(
   {
     userTgId: {
       type: Number,
       required: true,
     },
 
-    // READY | CUSTOM
     type: {
       type: String,
       enum: ['READY', 'CUSTOM'],
       required: true,
     },
 
-    // для CUSTOM
     budget: {
       type: String,
       default: null,
@@ -27,18 +49,16 @@ const OrderSchema = new Schema(
       default: null,
     },
 
-    // для READY
     refText: {
       type: String,
       default: null,
     },
 
     refPhotos: {
-      type: [String], // file_id
+      type: [String],
       default: [],
     },
 
-    // доставка
     deliveryType: {
       type: String,
       enum: ['COURIER', 'PICKUP'],
@@ -66,7 +86,11 @@ const OrderSchema = new Schema(
   }
 )
 
-export const Order = model('Order', OrderSchema)
+/* ================= MODEL ================= */
+
+export const Order = model<OrderDoc>('Order', OrderSchema)
+
+/* ================= HELPERS ================= */
 
 export async function getActiveOrder(userTgId: number) {
   return Order.findOne({ userTgId, status: 'new' }).sort({ createdAt: -1 })

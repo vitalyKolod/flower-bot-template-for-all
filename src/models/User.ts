@@ -16,6 +16,7 @@ export type UserState =
   | 'DONE'
   | 'E2_STYLE'
   | 'E2_BUDGET'
+  | 'WAIT_READY_CONTENT'
 const UserSchema = new Schema(
   {
     tgId: { type: Number, required: true, unique: true },
