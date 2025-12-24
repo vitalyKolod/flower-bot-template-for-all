@@ -17,6 +17,7 @@ import {
 } from './screens'
 import { getActiveOrder, Order } from './models/Order'
 import { buildConfirmText } from './utils/buildConfirm'
+import { sendOrderToGroup } from './utils/sendOrderToGroup'
 
 const bot = new Telegraf(process.env.BOT_TOKEN!)
 
@@ -398,7 +399,15 @@ async function start() {
   /* ================= CONFIRM ================= */
   bot.action('CONFIRM_SEND', async (ctx) => {
     await ctx.answerCbQuery()
-    await setState(ctx.from!.id, 'DONE')
+
+    const tgId = ctx.from!.id
+    const order = await getActiveOrder(tgId)
+    if (!order) return
+
+    // 🚀 отправляем заказ в группу
+    await sendOrderToGroup(bot, order)
+
+    await setState(tgId, 'DONE')
 
     const s = renderDone()
     await ctx.editMessageText(s.text, s.keyboard)

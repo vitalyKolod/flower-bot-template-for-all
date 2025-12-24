@@ -1,5 +1,10 @@
 import { OrderDoc } from '../models/Order'
 
+const DELIVERY_LABEL: Record<'COURIER' | 'PICKUP', string> = {
+  COURIER: 'Доставка',
+  PICKUP: 'Самовывоз',
+}
+
 export function buildConfirmText(order: OrderDoc) {
   if (order.type === 'READY') {
     return (
@@ -7,7 +12,7 @@ export function buildConfirmText(order: OrderDoc) {
       'Тип: Готовый букет\n\n' +
       `Описание:\n${order.refText ?? '—'}\n\n` +
       `Фото: ${order.refPhotos.length} шт\n\n` +
-      `Доставка: ${order.deliveryType}\n` +
+      `Доставка: ${DELIVERY_LABEL[order.deliveryType]}\n` +
       `Адрес: ${order.address ?? '—'}\n` +
       `Телефон: ${order.phone}`
     )
@@ -18,7 +23,7 @@ export function buildConfirmText(order: OrderDoc) {
     'Тип: Индивидуальный букет\n\n' +
     `Бюджет: ${order.budget ?? '—'}\n` +
     `Стиль: ${order.style ?? '—'}\n\n` +
-    `Доставка: ${order.deliveryType}\n` +
+    `Доставка: ${DELIVERY_LABEL[order.deliveryType]}\n` +
     `Адрес: ${order.address ?? '—'}\n` +
     `Телефон: ${order.phone}`
   )
