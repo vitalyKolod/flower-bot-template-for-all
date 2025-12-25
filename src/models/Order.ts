@@ -21,6 +21,12 @@ export interface OrderDoc extends Document {
   address?: string | null
   phone: string
 
+  // manager
+  managerTgId?: number | null
+  managerReply?: string | null
+
+  supportChatId?: number | null
+
   status: OrderStatus
 }
 
@@ -79,6 +85,20 @@ const OrderSchema = new Schema<OrderDoc>(
       type: String,
       enum: ['new', 'in_work', 'accepted', 'rejected', 'done'],
       default: 'new',
+    },
+
+    managerTgId: {
+      type: Number,
+      default: null,
+    },
+
+    managerReply: {
+      type: String,
+      default: null,
+    },
+    supportChatId: {
+      type: Number,
+      default: null,
     },
   },
   {
