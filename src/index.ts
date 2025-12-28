@@ -309,64 +309,24 @@ async function start() {
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
-  bot.on('text', async (ctx) => {
-    // 🛑 только группа
-    if (!ctx.chat || ctx.chat.type === 'private') return
-
-    const threadId = ctx.message?.message_thread_id
-    if (!threadId) return // не в теме
-
-    // ищем заказ по supportChatId
-    const order = await Order.findOne({ supportChatId: threadId })
-    if (!order) return
-
-    // 🛑 не отвечаем сами себе
-    if (ctx.from?.is_bot) return
-
-    const text = ctx.message.text
-
-    // отправляем клиенту
-    await ctx.telegram.sendMessage(order.userTgId, `💬 Сообщение по вашему заказу:\n\n${text}`)
-
-    // (пока просто лог, без статусов)
-    console.log(`Message from manager ${ctx.from?.username} → client ${order.userTgId}`)
-  })
-
   /* ================= TEXT FSM ================= */
   bot.on('text', async (ctx) => {
     const tgId = ctx.from.id
     const user = await getOrCreateUser(ctx.from.id)
     const text = ctx.message.text
 
-    if (user.state === 'WAIT_MANAGER_REPLY') {
-      const orderId = user.managerReplyOrderId
-      if (!orderId) {
-        return ctx.reply('❌ Не найден заказ для ответа')
-      }
+    // ================= MANAGER → CLIENT =================
+    if (ctx.chat.type !== 'private') {
+      const threadId = ctx.message?.message_thread_id
+      if (!threadId) return
+      if (ctx.from?.is_bot) return
 
-      const order = await Order.findById(orderId)
-      if (!order) {
-        return ctx.reply('❌ Заказ не найден')
-      }
+      const order = await Order.findOne({ supportChatId: threadId })
+      if (!order) return
 
-      // сохраняем ответ
-      order.managerReply = text
-      order.managerTgId = ctx.from.id
-      await order.save()
+      await ctx.telegram.sendMessage(order.userTgId, `💬 Сообщение менеджера:\n\n${text}`)
 
-      // отправляем клиенту
-      await bot.telegram.sendMessage(
-        order.userTgId,
-        `💬 Ответ менеджера по вашему заказу:\n\n${text}`
-      )
-
-      // чистим FSM
-      user.managerReplyOrderId = null
-      await user.save()
-
-      await setState(ctx.from.id, 'START')
-
-      return ctx.reply('✅ Ответ отправлен клиенту')
+      return
     }
 
     if (user.state === 'WAIT_READY_CONTENT') {
@@ -486,29 +446,6 @@ async function start() {
 
     const s = renderDone()
     await ctx.editMessageText(s.text, s.keyboard)
-  })
-
-  // менеджер нажал "Ответить"
-  bot.action(/^REPLY_(.+)/, async (ctx) => {
-    await ctx.answerCbQuery()
-
-    const orderId = ctx.match[1]
-    const managerTgId = ctx.from.id
-
-    const order = await Order.findById(orderId)
-    if (!order) {
-      return ctx.reply('❌ Заказ не найден')
-    }
-
-    // 👇 сохраняем orderId В ПОЛЬЗОВАТЕЛЕ
-    const manager = await getOrCreateUser(managerTgId)
-    manager.managerReplyOrderId = orderId
-    await manager.save()
-
-    // 👇 ставим ОДНО состояние
-    await setState(managerTgId, 'WAIT_MANAGER_REPLY')
-
-    await ctx.reply(`✍️ Напишите ответ клиенту по заказу ID: ${orderId}`)
   })
 
   await bot.launch()
