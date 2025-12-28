@@ -18,6 +18,7 @@ import {
 import { getActiveOrder, Order } from './models/Order'
 import { buildConfirmText } from './utils/buildConfirm'
 import { sendOrderToGroup } from './utils/sendOrderToGroup'
+import { buildOrderCard } from './utils/buildOrderCard'
 
 const GROUP_CHAT_ID = Number(process.env.GROUP_CHAT_ID)
 const bot = new Telegraf(process.env.BOT_TOKEN!)
@@ -217,6 +218,72 @@ async function start() {
     await ctx.editMessageText(s.text, s.keyboard)
   })
 
+  bot.action(/^STATUS_(ACCEPT|REJECT|DONE)_(.+)/, async (ctx) => {
+    await ctx.answerCbQuery()
+
+    const action = ctx.match[1]
+    const orderId = ctx.match[2]
+
+    const order = await Order.findById(orderId)
+    if (!order || !order.pinnedMessageId || !order.supportChatId) return
+
+    // защита: нажали в другой теме — игнор
+    const message = ctx.callbackQuery?.message as any
+    const threadId = message?.message_thread_id
+
+    if (threadId !== order.supportChatId) {
+      return ctx.answerCbQuery('❌ Это не та тема')
+    }
+
+    // меняем статус
+    if (action === 'ACCEPT') order.status = 'accepted'
+    if (action === 'REJECT') order.status = 'rejected'
+    if (action === 'DONE') order.status = 'done'
+
+    order.statusUpdatedBy = ctx.from.id
+    await order.save()
+
+    // какие кнопки показывать дальше
+    let replyMarkup: any = undefined
+
+    if (order.status === 'accepted') {
+      replyMarkup = {
+        inline_keyboard: [[{ text: '🏁 Завершить', callback_data: `STATUS_DONE_${order._id}` }]],
+      }
+    }
+
+    if (order.status === 'in_work') {
+      replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: '✅ Принять', callback_data: `STATUS_ACCEPT_${order._id}` },
+            { text: '❌ Отклонить', callback_data: `STATUS_REJECT_${order._id}` },
+          ],
+        ],
+      }
+    }
+
+    // обновляем закреплённую карточку
+    await bot.telegram.editMessageText(
+      GROUP_CHAT_ID,
+      order.pinnedMessageId,
+      undefined,
+      buildOrderCard(order),
+      { reply_markup: replyMarkup }
+    )
+
+    // (опционально) уведомление клиенту
+    if (order.status === 'accepted') {
+      await bot.telegram.sendMessage(order.userTgId, '✅ Ваш заказ принят!')
+    }
+    if (order.status === 'rejected') {
+      await bot.telegram.sendMessage(order.userTgId, '❌ Заказ отклонён')
+    }
+    if (order.status === 'done') {
+      await bot.telegram.sendMessage(order.userTgId, '🏁 Заказ завершён. Спасибо!')
+    }
+  })
+
   /* ================= CONTACT BUTTONS ================= */
   bot.action('CONTACT_REQUEST', async (ctx) => {
     await ctx.answerCbQuery()
@@ -411,11 +478,12 @@ async function start() {
     }
 
     // ✉️ клиент пишет — прокидываем в тему
+
     if (ctx.chat.type === 'private') {
       const order = await Order.findOne({
         userTgId: tgId,
-        status: 'in_work',
-      })
+        status: { $in: ['in_work', 'accepted', 'done'] },
+      }).sort({ updatedAt: -1 })
 
       if (!order || !order.supportChatId) return
 
@@ -436,6 +504,13 @@ async function start() {
     if (!order) return
 
     // 🚀 отправляем заказ в группу
+    order.userTgId = ctx.from!.id
+    order.clientFirstName = ctx.from!.first_name ?? null
+    order.clientLastName = ctx.from!.last_name ?? null
+    order.clientUsername = ctx.from!.username ?? null
+
+    await order.save()
+
     await sendOrderToGroup(bot, order)
 
     // ✅ ВАЖНО: закрываем заказ

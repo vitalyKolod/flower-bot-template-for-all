@@ -27,6 +27,17 @@ export interface OrderDoc extends Document {
 
   supportChatId?: number | null
 
+  // manager / ui
+  pinnedMessageId?: number | null
+  statusUpdatedBy?: number | null
+
+  createdAt: Date
+  updatedAt: Date
+
+  clientFirstName?: string | null
+  clientLastName?: string | null
+  clientUsername?: string | null
+
   status: OrderStatus
 }
 
@@ -98,6 +109,29 @@ const OrderSchema = new Schema<OrderDoc>(
     },
     supportChatId: {
       type: Number,
+      default: null,
+    },
+    pinnedMessageId: {
+      type: Number,
+      default: null,
+    },
+    statusUpdatedBy: {
+      type: Number,
+      default: null,
+    },
+
+    clientFirstName: {
+      type: String,
+      default: null,
+    },
+
+    clientLastName: {
+      type: String,
+      default: null,
+    },
+
+    clientUsername: {
+      type: String,
       default: null,
     },
   },
