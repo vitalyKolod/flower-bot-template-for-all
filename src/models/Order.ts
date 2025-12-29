@@ -34,9 +34,7 @@ export interface OrderDoc extends Document {
   createdAt: Date
   updatedAt: Date
 
-  clientFirstName?: string | null
-  clientLastName?: string | null
-  clientUsername?: string | null
+  clientName?: string | null
 
   status: OrderStatus
 }
@@ -120,17 +118,7 @@ const OrderSchema = new Schema<OrderDoc>(
       default: null,
     },
 
-    clientFirstName: {
-      type: String,
-      default: null,
-    },
-
-    clientLastName: {
-      type: String,
-      default: null,
-    },
-
-    clientUsername: {
+    clientName: {
       type: String,
       default: null,
     },

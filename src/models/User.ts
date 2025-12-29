@@ -12,13 +12,13 @@ export type UserState =
   | 'WAIT_ADDRESS'
   | 'E3_DELIVERY'
   | 'WAIT_PHONE_TEXT'
+  | 'WAIT_CLIENT_NAME'
   | 'CONFIRM'
   | 'DONE'
   | 'E2_STYLE'
   | 'E2_BUDGET'
   | 'WAIT_READY_CONTENT'
   | 'WAIT_MANAGER_REPLY'
-
 const UserSchema = new Schema(
   {
     tgId: { type: Number, required: true, unique: true },

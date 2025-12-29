@@ -213,9 +213,8 @@ async function start() {
       await order.save()
     }
 
-    await setState(tgId, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
-    const s = renderContact()
-    await ctx.editMessageText(s.text, s.keyboard)
+    await setState(tgId, 'WAIT_CLIENT_NAME', 'E3_DELIVERY')
+    await ctx.editMessageText('Как к вам обращаться? 🙂')
   })
 
   bot.action(/^STATUS_(ACCEPT|REJECT|DONE)_(.+)/, async (ctx) => {
@@ -408,6 +407,19 @@ async function start() {
       return
     }
 
+    if (user.state === 'WAIT_CLIENT_NAME') {
+      const order = await getActiveOrder(tgId)
+      if (!order) return
+
+      order.clientName = text
+      await order.save()
+
+      await setState(tgId, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
+
+      const s = renderContact()
+      return ctx.reply(s.text, s.keyboard)
+    }
+
     if (user.state === 'WAIT_ADDRESS') {
       const tgId = ctx.from.id
       const order = await getActiveOrder(tgId)
@@ -417,9 +429,9 @@ async function start() {
         await order.save()
       }
 
-      await setState(tgId, 'WAIT_PHONE_TEXT', 'E3_DELIVERY')
-      const s = renderContact()
-      return ctx.reply(s.text, s.keyboard)
+      // ✅ сначала имя
+      await setState(tgId, 'WAIT_CLIENT_NAME', 'WAIT_ADDRESS')
+      return ctx.reply('Как к вам обращаться? 🙂')
     }
 
     if (user.state === 'WAIT_PHONE_TEXT') {
@@ -482,7 +494,7 @@ async function start() {
     if (ctx.chat.type === 'private') {
       const order = await Order.findOne({
         userTgId: tgId,
-        status: { $in: ['in_work', 'accepted', 'done'] },
+        status: { $in: ['in_work', 'accepted', 'done', 'rejected'] },
       }).sort({ updatedAt: -1 })
 
       if (!order || !order.supportChatId) return
@@ -505,9 +517,10 @@ async function start() {
 
     // 🚀 отправляем заказ в группу
     order.userTgId = ctx.from!.id
-    order.clientFirstName = ctx.from!.first_name ?? null
-    order.clientLastName = ctx.from!.last_name ?? null
-    order.clientUsername = ctx.from!.username ?? null
+
+    if (!order.clientName) {
+      order.clientName = ctx.from!.first_name ?? null
+    }
 
     await order.save()
 

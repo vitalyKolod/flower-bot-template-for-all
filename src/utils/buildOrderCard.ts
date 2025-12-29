@@ -8,8 +8,7 @@ export function buildOrderCard(order: OrderDoc) {
 
   return (
     `🆕 ЗАКАЗ #${shortId}\n\n` +
-    `👤 Клиент: <a href="${client.link}">${client.name}</a>
-${client.username}\n` +
+    `👤 Клиент: ${order.clientName ?? '—'}\n` +
     `📦 Тип: ${TYPE_VIEW[order.type]}\n` +
     (order.budget ? `💰 Бюджет: ${order.budget}\n` : '') +
     (order.style ? `🎨 Стиль: ${order.style}\n` : '') +
