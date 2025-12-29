@@ -20,6 +20,9 @@ import { buildConfirmText } from './utils/buildConfirm'
 import { sendOrderToGroup } from './utils/sendOrderToGroup'
 import { buildOrderCard } from './utils/buildOrderCard'
 
+import { isAdmin } from './utils/isAdmin'
+import { renderAdminHome } from './screens'
+
 const GROUP_CHAT_ID = Number(process.env.GROUP_CHAT_ID)
 const bot = new Telegraf(process.env.BOT_TOKEN!)
 
@@ -33,6 +36,18 @@ async function start() {
     await setState(ctx.from.id, 'START')
 
     const s = renderStart()
+    await ctx.reply(s.text, s.keyboard)
+  })
+
+  /* ================= /admin ================= */
+  bot.command('admin', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+      return ctx.reply('❌ У вас нет доступа')
+    }
+
+    await setState(ctx.from.id, 'ADMIN_HOME')
+
+    const s = renderAdminHome()
     await ctx.reply(s.text, s.keyboard)
   })
 

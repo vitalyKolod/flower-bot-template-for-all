@@ -96,3 +96,16 @@ export function renderDone() {
     keyboard: Markup.inlineKeyboard([[Markup.button.callback('🌸 Новый заказ', 'E1')]]),
   }
 }
+
+export function renderAdminHome() {
+  return {
+    text: '👨‍💼 Админ-панель',
+    keyboard: Markup.inlineKeyboard([
+      [Markup.button.callback('📦 Заказы', 'ADMIN_ORDERS')],
+      [Markup.button.callback('👥 Менеджеры', 'ADMIN_MANAGERS')],
+      [Markup.button.callback('📢 Рассылка', 'ADMIN_BROADCAST')],
+      [Markup.button.callback('📊 Статистика', 'ADMIN_STATS')],
+      [Markup.button.callback('⬅️ Выйти', 'ADMIN_EXIT')],
+    ]),
+  }
+}

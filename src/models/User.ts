@@ -19,6 +19,7 @@ export type UserState =
   | 'E2_BUDGET'
   | 'WAIT_READY_CONTENT'
   | 'WAIT_MANAGER_REPLY'
+  | 'ADMIN_HOME'
 const UserSchema = new Schema(
   {
     tgId: { type: Number, required: true, unique: true },
