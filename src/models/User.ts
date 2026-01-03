@@ -20,6 +20,12 @@ export type UserState =
   | 'WAIT_READY_CONTENT'
   | 'WAIT_MANAGER_REPLY'
   | 'ADMIN_HOME'
+  | 'ADMIN_ORDERS_PREV'
+  | 'ADMIN_ORDERS_NEXT'
+  | 'ADMIN_FILTER'
+  | 'ADMIN_HOME'
+  | 'ADMIN_ORDERS_LIST'
+
 const UserSchema = new Schema(
   {
     tgId: { type: Number, required: true, unique: true },

@@ -14,6 +14,7 @@ import {
   renderContact,
   renderConfirm,
   renderDone,
+  renderAdminOrdersStub,
 } from './screens'
 import { getActiveOrder, Order } from './models/Order'
 import { buildConfirmText } from './utils/buildConfirm'
@@ -49,6 +50,51 @@ async function start() {
 
     const s = renderAdminHome()
     await ctx.reply(s.text, s.keyboard)
+  })
+
+  bot.action('ADMIN_HOME', async (ctx) => {
+    await ctx.answerCbQuery()
+    if (!isAdmin(ctx.from!.id)) return ctx.reply('❌ У вас нет доступа')
+
+    await setState(ctx.from!.id, 'ADMIN_HOME')
+    const s = renderAdminHome()
+    return ctx.editMessageText(s.text, s.keyboard)
+  })
+
+  bot.action('ADMIN_ORDERS', async (ctx) => {
+    await ctx.answerCbQuery()
+    if (!isAdmin(ctx.from!.id)) return ctx.reply('❌ У вас нет доступа')
+
+    await setState(ctx.from!.id, 'ADMIN_ORDERS_LIST', 'ADMIN_HOME')
+
+    const s = renderAdminOrdersStub()
+    return ctx.editMessageText(s.text, s.keyboard)
+  })
+
+  // заглушки, чтобы кнопки не молчали
+  bot.action('ADMIN_FILTER', async (ctx) => {
+    await ctx.answerCbQuery()
+    return ctx.answerCbQuery('🚧 Фильтры скоро', { show_alert: true })
+  })
+
+  bot.action('ADMIN_ORDERS_PREV', async (ctx) => {
+    await ctx.answerCbQuery()
+    return ctx.answerCbQuery('Пока 1 страница 🙂')
+  })
+
+  bot.action('ADMIN_ORDERS_NEXT', async (ctx) => {
+    await ctx.answerCbQuery()
+    return ctx.answerCbQuery('Пока 1 страница 🙂')
+  })
+
+  bot.action('ADMIN_STATS_SOON', async (ctx) => {
+    await ctx.answerCbQuery()
+    return ctx.answerCbQuery('🚧 Скоро будет статистика', { show_alert: true })
+  })
+
+  bot.action('ADMIN_BROADCAST_SOON', async (ctx) => {
+    await ctx.answerCbQuery()
+    return ctx.answerCbQuery('🚧 Скоро будет рассылка', { show_alert: true })
   })
 
   /* ================= TYPE ================= */

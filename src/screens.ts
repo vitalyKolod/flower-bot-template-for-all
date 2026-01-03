@@ -109,3 +109,17 @@ export function renderAdminHome() {
     ]),
   }
 }
+
+export function renderAdminOrdersStub() {
+  return {
+    text: '📦 Заказы\n' + 'Страница 1 / 1\n\n' + '🚧 Пока заглушка. Дальше подключим базу.',
+    keyboard: Markup.inlineKeyboard([
+      [
+        Markup.button.callback('⬅️', 'ADMIN_ORDERS_PREV'),
+        Markup.button.callback('➡️', 'ADMIN_ORDERS_NEXT'),
+      ],
+      [Markup.button.callback('🧹 Фильтр', 'ADMIN_FILTER')],
+      [Markup.button.callback('⬅️ Назад', 'ADMIN_HOME')],
+    ]),
+  }
+}
