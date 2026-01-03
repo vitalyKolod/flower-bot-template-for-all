@@ -1,4 +1,5 @@
 import { Markup } from 'telegraf'
+import { OrderDoc } from './models/Order'
 
 export function renderStart() {
   return {
@@ -114,6 +115,50 @@ export function renderAdminOrdersStub() {
   return {
     text: '📦 Заказы\n' + 'Страница 1 / 1\n\n' + '🚧 Пока заглушка. Дальше подключим базу.',
     keyboard: Markup.inlineKeyboard([
+      [
+        Markup.button.callback('⬅️', 'ADMIN_ORDERS_PREV'),
+        Markup.button.callback('➡️', 'ADMIN_ORDERS_NEXT'),
+      ],
+      [Markup.button.callback('🧹 Фильтр', 'ADMIN_FILTER')],
+      [Markup.button.callback('⬅️ Назад', 'ADMIN_HOME')],
+    ]),
+  }
+}
+
+export function renderAdminOrdersList(orders: OrderDoc[]) {
+  if (orders.length === 0) {
+    return {
+      text: '📦 Заказы\n\nПока заказов нет',
+      keyboard: Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад', 'ADMIN_HOME')]]),
+    }
+  }
+
+  const orderButtons = orders.map((order, index) => {
+    const client = order.clientName ?? 'Без имени'
+    const type = order.type === 'READY' ? 'Готовый' : 'Индивидуальный'
+    const status =
+      order.status === 'new'
+        ? '🆕 Новый'
+        : order.status === 'in_work'
+        ? '🟡 В работе'
+        : order.status === 'accepted'
+        ? '🟢 Принят'
+        : order.status === 'done'
+        ? '🏁 Завершён'
+        : '❌ Отклонён'
+
+    return [
+      Markup.button.callback(
+        `${index + 1}. ${client} — ${type} — ${status}`,
+        `ADMIN_ORDER_${order._id}`
+      ),
+    ]
+  })
+
+  return {
+    text: '📦 Заказы (последние)',
+    keyboard: Markup.inlineKeyboard([
+      ...orderButtons,
       [
         Markup.button.callback('⬅️', 'ADMIN_ORDERS_PREV'),
         Markup.button.callback('➡️', 'ADMIN_ORDERS_NEXT'),

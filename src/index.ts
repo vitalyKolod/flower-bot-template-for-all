@@ -15,6 +15,7 @@ import {
   renderConfirm,
   renderDone,
   renderAdminOrdersStub,
+  renderAdminOrdersList,
 } from './screens'
 import { getActiveOrder, Order } from './models/Order'
 import { buildConfirmText } from './utils/buildConfirm'
@@ -67,7 +68,9 @@ async function start() {
 
     await setState(ctx.from!.id, 'ADMIN_ORDERS_LIST', 'ADMIN_HOME')
 
-    const s = renderAdminOrdersStub()
+    const orders = await Order.find().sort({ createdAt: -1 }).limit(5)
+
+    const s = renderAdminOrdersList(orders)
     return ctx.editMessageText(s.text, s.keyboard)
   })
 
